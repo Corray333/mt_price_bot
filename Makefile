@@ -7,8 +7,8 @@ lint:
 run: build
 	cd cmd && ./main ../.env
 goose-up:
-	cd migrations && goose postgres "user=$(POSTGRES_USER) password=$(POSTGRES_PASSWORD) host=localhost port=5432 dbname=form sslmode=disable" up
+	cd migrations && goose postgres "user=$(POSTGRES_USER) password=$(POSTGRES_PASSWORD) host=localhost port=5433 dbname=form sslmode=disable" up
 goose-down:
-	cd migrations && goose postgres "user=$(POSTGRES_USER) password=$(POSTGRES_PASSWORD) host=localhost port=5432 dbname=form sslmode=disable" down
+	cd migrations && goose postgres "user=$(POSTGRES_USER) password=$(POSTGRES_PASSWORD) host=localhost port=5433 dbname=form sslmode=disable" down
 goose-down-all:
-	cd migrations && goose postgres "user=$(POSTGRES_USER) password=$(POSTGRES_PASSWORD) host=localhost port=5432 dbname=form sslmode=disable" down-to 0
+	cd migrations && goose postgres "user=$(POSTGRES_USER) password=$(POSTGRES_PASSWORD) host=localhost port=5433 dbname=form sslmode=disable" down-to 0
