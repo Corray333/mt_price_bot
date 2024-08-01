@@ -13,6 +13,40 @@ type Storage struct {
 	db *sqlx.DB
 }
 
+const (
+	MsgWelcome = iota
+	MsgAskFIO
+	MsgAskEmail
+	MsgAskPhone
+	MsgAskOrgName
+	MsgAskOrgsNumber
+	MsgPrice
+	MsgError
+	MsgAccepted
+	ButtonPrice
+	ButtonForm
+	ButtonNoOrg
+)
+
+var Messages = map[int]string{
+	MsgWelcome:       "В этом боте вы можете запросить актуальный прайс и оставить заявку",
+	MsgAskFIO:        "Чтобы оставить заявку, отправьте свои ФИО",
+	MsgAskEmail:      "Теперь отправьте свою почту",
+	MsgAskPhone:      "Отправьте контактный номер телефона",
+	MsgAskOrgName:    "Отправьте название вашей точки (если есть)",
+	MsgAskOrgsNumber: "Сколько у вас точек?",
+	MsgPrice:         "Наш актуальный прайс",
+	MsgError:         "Что-то пошло не так, попробуйте снова",
+	MsgAccepted:      "Спасибо, ваша заявка принята",
+	ButtonPrice:      "Получить прайс",
+	ButtonForm:       "Оставить заявку",
+	ButtonNoOrg:      "Нет точки",
+}
+
+var Admins = []string{
+	"corray9",
+}
+
 func New() *Storage {
 	db, err := sqlx.Open("postgres", os.Getenv("DB_CONN_STR"))
 	if err != nil {

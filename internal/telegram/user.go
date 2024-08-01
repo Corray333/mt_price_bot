@@ -1,13 +1,16 @@
 package telegram
 
 import (
+	"database/sql"
 	"fmt"
 	"net/mail"
 	"regexp"
 	"slices"
 	"strconv"
 
+	"github.com/Corray333/mt_price_bot/internal/storage"
 	"github.com/Corray333/mt_price_bot/internal/types"
+	"github.com/Corray333/mt_price_bot/internal/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -21,13 +24,34 @@ const (
 )
 
 func (tg *TelegramClient) sendWelcomeMessage(update tgbotapi.Update) {
-	if err := tg.store.CreateUser(&types.User{
-		ID:       update.FromChat().ID,
-		Username: update.Message.From.UserName,
-		IsAdmin:  slices.Contains(admins, update.Message.From.UserName),
-	}); err != nil {
-		tg.HandleError("error while creating user: "+err.Error(), "update", update.UpdateID)
-		msg := tgbotapi.NewMessage(update.FromChat().ID, messages[MsgError])
+	_, err := tg.store.GetUserByID(update.FromChat().ID)
+	if err != nil && err != sql.ErrNoRows {
+		tg.HandleError("error while getting user: "+err.Error(), "update", update.UpdateID)
+		return
+	}
+	if err == sql.ErrNoRows {
+		if err := tg.store.CreateUser(&types.User{
+			ID:       update.FromChat().ID,
+			Username: update.Message.From.UserName,
+			IsAdmin:  slices.Contains(storage.Admins, update.Message.From.UserName),
+		}); err != nil {
+			tg.HandleError("error while creating user: "+err.Error(), "update", update.UpdateID)
+			msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgError])
+			if _, err := tg.bot.Send(msg); err != nil {
+				tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
+				return
+			}
+			return
+		}
+	}
+
+	if slices.Contains(storage.Admins, update.Message.From.UserName) {
+		msg := tgbotapi.NewMessage(update.FromChat().ID, "Добро пожаловать в админку. Все заявки будут приходить в чат. Чтобы обновить прайс, отправьте файл в чате.")
+		msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+			tgbotapi.NewKeyboardButtonRow(
+				tgbotapi.NewKeyboardButton("Обновить тексты сообщений"),
+			),
+		)
 		if _, err := tg.bot.Send(msg); err != nil {
 			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 			return
@@ -35,11 +59,11 @@ func (tg *TelegramClient) sendWelcomeMessage(update tgbotapi.Update) {
 		return
 	}
 
-	msg := tgbotapi.NewMessage(update.FromChat().ID, messages[MsgWelcome])
+	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgWelcome])
 	msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
-			tgbotapi.NewKeyboardButton(messages[ButtonForm]),
-			tgbotapi.NewKeyboardButton(messages[ButtonPrice]),
+			tgbotapi.NewKeyboardButton(storage.Messages[storage.ButtonForm]),
+			tgbotapi.NewKeyboardButton(storage.Messages[storage.ButtonPrice]),
 		),
 	)
 	if _, err := tg.bot.Send(msg); err != nil {
@@ -49,8 +73,18 @@ func (tg *TelegramClient) sendWelcomeMessage(update tgbotapi.Update) {
 }
 
 func (tg *TelegramClient) sendPrice(update tgbotapi.Update) {
-	msg := tgbotapi.NewDocument(update.FromChat().ID, tgbotapi.FilePath("../files/price.pdf"))
-	msg.Caption = messages[MsgPrice]
+	fileName, err := utils.FindFileWithKeyword("price")
+	if err != nil {
+		tg.HandleError("error while finding file: "+err.Error(), "update", update.UpdateID)
+		msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgError])
+		if _, err := tg.bot.Send(msg); err != nil {
+			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
+			return
+		}
+		return
+	}
+	msg := tgbotapi.NewDocument(update.FromChat().ID, tgbotapi.FilePath("../files/"+fileName))
+	msg.Caption = storage.Messages[storage.MsgPrice]
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 		return
@@ -58,7 +92,7 @@ func (tg *TelegramClient) sendPrice(update tgbotapi.Update) {
 }
 
 func (tg *TelegramClient) sendForm(user *types.User, update tgbotapi.Update) {
-	msg := tgbotapi.NewMessage(update.FromChat().ID, messages[MsgAskFIO])
+	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAskFIO])
 	msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
@@ -72,7 +106,7 @@ func (tg *TelegramClient) sendForm(user *types.User, update tgbotapi.Update) {
 }
 
 func (tg *TelegramClient) handleInputFIO(user *types.User, update tgbotapi.Update) {
-	re := regexp.MustCompile(`^([A-Za-zА-Яа-яЁё]+[ \t]*)+$`)
+	re := regexp.MustCompile(`^([A-ZА-Я][a-zа-яA-ZА-Я]*\s){1,2}[A-ZА-Я][a-zа-яA-ZА-Я]*$`)
 	if !re.MatchString(update.Message.Text) {
 		msg := tgbotapi.NewMessage(update.FromChat().ID, "Пожалуйста, введи только имя и фамилию)")
 		if _, err := tg.bot.Send(msg); err != nil {
@@ -84,7 +118,7 @@ func (tg *TelegramClient) handleInputFIO(user *types.User, update tgbotapi.Updat
 	user.FIO = update.Message.Text
 	user.State = StateWaitingEmail
 
-	msg := tgbotapi.NewMessage(update.FromChat().ID, "Осталось совсем немного 🌝 отправишь свою рабочую / контактную почту?)")
+	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAskEmail])
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 		return
@@ -102,7 +136,7 @@ func (tg *TelegramClient) handleInputEmail(user *types.User, update tgbotapi.Upd
 		return
 	}
 
-	msg := tgbotapi.NewMessage(update.FromChat().ID, messages[MsgAskPhone])
+	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAskPhone])
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 		return
@@ -127,10 +161,10 @@ func (tg *TelegramClient) handleInputPhone(user *types.User, update tgbotapi.Upd
 		return
 	}
 
-	msg := tgbotapi.NewMessage(update.FromChat().ID, messages[MsgAskOrgName])
+	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAskOrgName])
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData(messages[ButtonNoOrg], "no_org"),
+			tgbotapi.NewInlineKeyboardButtonData(storage.Messages[storage.ButtonNoOrg], "no_org"),
 		),
 	)
 	if _, err := tg.bot.Send(msg); err != nil {
@@ -165,7 +199,13 @@ func (tg *TelegramClient) handleInputOrgName(user *types.User, update tgbotapi.U
 			return
 		}
 
-		msg := tgbotapi.NewMessage(update.FromChat().ID, messages[MsgAccepted])
+		msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAccepted])
+		msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+			tgbotapi.NewKeyboardButtonRow(
+				// tgbotapi.NewKeyboardButton(storage.Messages[storage.ButtonForm]),
+				tgbotapi.NewKeyboardButton(storage.Messages[storage.ButtonPrice]),
+			),
+		)
 		if _, err := tg.bot.Send(msg); err != nil {
 			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 			return
@@ -187,9 +227,10 @@ func (tg *TelegramClient) handleInputOrgName(user *types.User, update tgbotapi.U
 				return
 			}
 		}
+		return
 	}
 
-	msg := tgbotapi.NewMessage(update.FromChat().ID, messages[MsgAskOrgsNumber])
+	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAskOrgsNumber])
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "chat_id", "update", update.UpdateID)
 		return
@@ -219,7 +260,13 @@ func (tg *TelegramClient) handleInputOrgNumber(user *types.User, update tgbotapi
 		return
 	}
 
-	msg := tgbotapi.NewMessage(update.FromChat().ID, messages[MsgAccepted])
+	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAccepted])
+	msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			// tgbotapi.NewKeyboardButton(storage.Messages[storage.ButtonForm]),
+			tgbotapi.NewKeyboardButton(storage.Messages[storage.ButtonPrice]),
+		),
+	)
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 		return
@@ -241,5 +288,4 @@ func (tg *TelegramClient) handleInputOrgNumber(user *types.User, update tgbotapi
 			return
 		}
 	}
-
 }

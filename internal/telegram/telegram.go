@@ -2,9 +2,16 @@ package telegram
 
 import (
 	"database/sql"
+	"io"
 	"log"
+	"net/http"
+	"os"
+	"path/filepath"
 
+	"github.com/Corray333/mt_price_bot/internal/gsheets"
+	"github.com/Corray333/mt_price_bot/internal/storage"
 	"github.com/Corray333/mt_price_bot/internal/types"
+	"github.com/Corray333/mt_price_bot/internal/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -15,43 +22,9 @@ type Storage interface {
 	GetAllAdmins() ([]*types.User, error)
 }
 
-const (
-	MsgWelcome = iota + 1
-	MsgAskFIO
-	MsgAskEmail
-	MsgAskPhone
-	MsgAskOrgName
-	MsgAskOrgsNumber
-	MsgPrice
-	MsgError
-	MsgAccepted
-	ButtonPrice
-	ButtonForm
-	ButtonNoOrg
-)
-
 type TelegramClient struct {
 	bot   *tgbotapi.BotAPI
 	store Storage
-}
-
-var messages = map[int]string{
-	MsgWelcome:       "Привет, в этом боте ты можешь запросить актуальный прайс и оставить заявку",
-	MsgAskFIO:        "Чтобы оставить заявку, отправьте свои ФИО",
-	MsgAskEmail:      "Теперь отправьте свою почту",
-	MsgAskPhone:      "Отправьте контактный номер телефона",
-	MsgAskOrgName:    "Отправьте название вашей точки (если есть)",
-	MsgAskOrgsNumber: "Сколько у вас точек?",
-	MsgPrice:         "Наш актуальный прайс",
-	MsgError:         "Что-то пошло не так, попробуйте снова",
-	MsgAccepted:      "Спасибо, ваша заявка принята",
-	ButtonPrice:      "Получить прайс",
-	ButtonForm:       "Оставить заявку",
-	ButtonNoOrg:      "Нет точки",
-}
-
-var admins = []string{
-	"corray9",
 }
 
 func NewClient(token string, store Storage) *TelegramClient {
@@ -96,7 +69,7 @@ func (tg *TelegramClient) Run() {
 
 		switch {
 		case user.IsAdmin:
-			tg.handleAdminUpdate(user, update)
+			tg.handleAdminUpdate(update)
 			continue
 		default:
 			tg.handleUserUpdate(user, update)
@@ -109,10 +82,10 @@ func (tg *TelegramClient) Run() {
 func (tg *TelegramClient) handleUserUpdate(user *types.User, update tgbotapi.Update) {
 
 	if update.Message != nil {
-		if update.Message.Text == messages[ButtonPrice] {
+		if update.Message.Text == storage.Messages[storage.ButtonPrice] {
 			tg.sendPrice(update)
 			return
-		} else if update.Message.Text == messages[ButtonForm] {
+		} else if update.Message.Text == storage.Messages[storage.ButtonForm] {
 			tg.sendForm(user, update)
 			return
 		}
@@ -136,6 +109,72 @@ func (tg *TelegramClient) handleUserUpdate(user *types.User, update tgbotapi.Upd
 	}
 }
 
-func (tg *TelegramClient) handleAdminUpdate(user *types.User, update tgbotapi.Update) {
+func (tg *TelegramClient) handleAdminUpdate(update tgbotapi.Update) {
+	if update.Message != nil {
+		if update.Message.IsCommand() {
+			if update.Message.Command() == "start" {
+				tg.sendWelcomeMessage(update)
+				return
+			}
+		}
+		if update.Message.Text == "Обновить тексты сообщений" {
+			gsheets.UpdateMessages()
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Данные обновлены")
+			if _, err := tg.bot.Send(msg); err != nil {
+				tg.HandleError("error while sending message: "+err.Error(), "update_id", update.UpdateID)
+				return
+			}
+			return
+		}
+		if update.Message.Document != nil {
+			tg.handleNewPrice(update)
+			return
+		}
+	}
+}
 
+func (tg *TelegramClient) handleNewPrice(update tgbotapi.Update) {
+	if err := utils.RemoveFilesWithKeyword("price"); err != nil {
+		tg.HandleError("error while removing files: "+err.Error(), "update_id", update.UpdateID)
+		return
+	}
+	doc := update.Message.Document
+	fileID := doc.FileID
+
+	file, err := tg.bot.GetFile(tgbotapi.FileConfig{FileID: fileID})
+	if err != nil {
+		tg.HandleError("error while getting file: "+err.Error(), "update_id", update.UpdateID)
+		return
+	}
+
+	fileURL := file.Link(tg.bot.Token)
+
+	response, err := http.Get(fileURL)
+	if err != nil {
+		tg.HandleError("error while getting file: "+err.Error(), "update_id", update.UpdateID)
+		return
+	}
+	defer response.Body.Close()
+
+	extension := filepath.Ext(doc.FileName)
+	newFileName := "../files/price" + extension
+
+	out, err := os.Create(newFileName)
+	if err != nil {
+		tg.HandleError("error while creating file: "+err.Error(), "update_id", update.UpdateID)
+		return
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, response.Body)
+	if err != nil {
+		tg.HandleError("error while copying file: "+err.Error(), "update_id", update.UpdateID)
+		return
+	}
+
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Прайс обновлен")
+	if _, err := tg.bot.Send(msg); err != nil {
+		tg.HandleError("error while sending message: "+err.Error(), "update_id", update.UpdateID)
+		return
+	}
 }
