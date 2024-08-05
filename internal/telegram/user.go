@@ -56,7 +56,7 @@ func (tg *TelegramClient) sendWelcomeMessage(update tgbotapi.Update) {
 		msg := tgbotapi.NewMessage(update.FromChat().ID, "Добро пожаловать в админку. Все заявки будут приходить в чат. Чтобы обновить прайс, отправьте файл в чате.")
 		msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
 			tgbotapi.NewKeyboardButtonRow(
-				tgbotapi.NewKeyboardButton("Обновить тексты сообщений"),
+				tgbotapi.NewKeyboardButton("Обновить данные бота"),
 			),
 		)
 		if _, err := tg.bot.Send(msg); err != nil {
@@ -112,15 +112,6 @@ func (tg *TelegramClient) sendForm(user *types.User, update tgbotapi.Update) {
 }
 
 func (tg *TelegramClient) handleInputFIO(user *types.User, update tgbotapi.Update) {
-	re := regexp.MustCompile(`^([A-ZА-Я][a-zа-яA-ZА-Я]*\s){1,2}[A-ZА-Я][a-zа-яA-ZА-Я]*$`)
-	if !re.MatchString(update.Message.Text) {
-		msg := tgbotapi.NewMessage(update.FromChat().ID, "Пожалуйста, введи только имя и фамилию)")
-		if _, err := tg.bot.Send(msg); err != nil {
-			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
-			return
-		}
-		return
-	}
 	user.FIO = update.Message.Text
 	user.State = StateWaitingEmail
 
