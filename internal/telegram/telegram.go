@@ -19,6 +19,7 @@ type Storage interface {
 	CreateUser(user *types.User) error
 	GetUserByID(user_id int64) (*types.User, error)
 	GetAllAdmins() ([]*types.User, error)
+	UpdateAdmins(admins []string) error
 }
 
 type TelegramClient struct {
@@ -127,7 +128,15 @@ func (tg *TelegramClient) handleAdminUpdate(update tgbotapi.Update) {
 			}
 		}
 		if update.Message.Text == "Обновить тексты сообщений" {
-			gsheets.UpdateMessages()
+			if err := gsheets.UpdateMessages(); err != nil {
+				tg.HandleError("error while updating messages: "+err.Error(), "update_id", update.UpdateID)
+				return
+			}
+			err := tg.store.UpdateAdmins(storage.Admins)
+			if err != nil {
+				tg.HandleError("error while updating admins: "+err.Error(), "update_id", update.UpdateID)
+				return
+			}
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Данные обновлены")
 			if _, err := tg.bot.Send(msg); err != nil {
 				tg.HandleError("error while sending message: "+err.Error(), "update_id", update.UpdateID)

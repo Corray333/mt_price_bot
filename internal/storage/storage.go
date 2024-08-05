@@ -67,8 +67,29 @@ func New() *Storage {
 func (s *Storage) UpdateUser(user *types.User) error {
 	_, err := s.db.Exec(`UPDATE users SET username = $1, phone = $2, email = $3, org = $4, org_number = $5, fio = $6, state = $7 WHERE user_id = $8`, user.Username, user.Phone, user.Email, user.Org, user.OrgNumber, user.FIO, user.State, user.ID)
 	return err
-
 }
+
+func (s *Storage) UpdateAdmins(admins []string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`UPDATE users SET is_admin = false`)
+	if err != nil {
+		return err
+	}
+
+	for _, admin := range admins {
+		_, err = tx.Exec(`UPDATE users SET is_admin = true WHERE username = $1`, admin)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 func (s *Storage) CreateUser(user *types.User) error {
 	fmt.Printf("%+v\n", *user)
 	_, err := s.db.Exec(`INSERT INTO users (user_id, username, is_admin, state) VALUES ($1, $2, $3, $4)`, user.ID, user.Username, user.IsAdmin, user.State)
