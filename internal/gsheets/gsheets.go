@@ -62,7 +62,7 @@ func UpdateMessages() error {
 
 	admins := []string{}
 	for _, val := range resp.Values {
-		if val[0] == nil {
+		if len(val) == 0 || val[0] == nil {
 			break
 		}
 		admins = append(admins, val[0].(string))
