@@ -1,7 +1,6 @@
 package telegram
 
 import (
-	"database/sql"
 	"io"
 	"log"
 	"net/http"
@@ -57,12 +56,17 @@ func (tg *TelegramClient) Run() {
 			continue
 		}
 
+		if update.Message != nil {
+			if update.Message.IsCommand() {
+				if update.Message.Command() == "start" {
+					tg.sendWelcomeMessage(update)
+					continue
+				}
+
+			}
+		}
 		user, err := tg.store.GetUserByID(update.FromChat().ID)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				tg.sendWelcomeMessage(update)
-				continue
-			}
 			tg.HandleError("error while getting user from db: "+err.Error(), "update_id", update.UpdateID)
 			continue
 		}
@@ -83,7 +87,10 @@ func (tg *TelegramClient) handleUserUpdate(user *types.User, update tgbotapi.Upd
 
 	if update.Message != nil {
 		if update.Message.Text == storage.Messages[storage.ButtonPrice] {
-			tg.sendPrice(update)
+			tg.sendPrice(user, update)
+			if err := tg.store.UpdateUser(user); err != nil {
+				tg.HandleError("error while updating user: "+err.Error(), "update_id", update.UpdateID)
+			}
 			return
 		} else if update.Message.Text == storage.Messages[storage.ButtonForm] {
 			tg.sendForm(user, update)
@@ -94,6 +101,8 @@ func (tg *TelegramClient) handleUserUpdate(user *types.User, update tgbotapi.Upd
 	switch user.State {
 	case StateWaitingFIO:
 		tg.handleInputFIO(user, update)
+	case StateWaitingPhoneForOrder:
+		tg.handleInputPhoneForOrder(user, update)
 	case StateWaitingEmail:
 		tg.handleInputEmail(user, update)
 	case StateWaitingPhone:

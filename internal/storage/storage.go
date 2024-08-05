@@ -26,6 +26,8 @@ const (
 	ButtonPrice
 	ButtonForm
 	ButtonNoOrg
+	MsgChooseQueryType
+	MsgOrderAccepted
 )
 
 var Messages = map[int]string{
@@ -69,7 +71,7 @@ func (s *Storage) UpdateUser(user *types.User) error {
 }
 func (s *Storage) CreateUser(user *types.User) error {
 	fmt.Printf("%+v\n", *user)
-	_, err := s.db.Exec(`INSERT INTO users (user_id, username, is_admin) VALUES ($1, $2, $3)`, user.ID, user.Username, user.IsAdmin)
+	_, err := s.db.Exec(`INSERT INTO users (user_id, username, is_admin, state) VALUES ($1, $2, $3, $4)`, user.ID, user.Username, user.IsAdmin, user.State)
 	return err
 }
 

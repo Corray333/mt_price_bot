@@ -28,7 +28,7 @@ func UpdateMessages() error {
 		return err
 	}
 
-	readRange := "Messages!B2:B13"
+	readRange := "Messages!B2:B15"
 	resp, err := srv.Spreadsheets.Values.Get(os.Getenv("SHEET_ID"), readRange).Do()
 	if err != nil {
 		return err
