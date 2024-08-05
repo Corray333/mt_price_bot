@@ -127,7 +127,7 @@ func (tg *TelegramClient) handleAdminUpdate(update tgbotapi.Update) {
 				return
 			}
 		}
-		if update.Message.Text == "Обновить тексты сообщений" {
+		if update.Message.Text == "Обновить данные бота" {
 			if err := gsheets.UpdateMessages(); err != nil {
 				tg.HandleError("error while updating messages: "+err.Error(), "update_id", update.UpdateID)
 				return
