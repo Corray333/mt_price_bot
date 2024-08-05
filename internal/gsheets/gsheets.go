@@ -40,6 +40,9 @@ func UpdateMessages() error {
 
 	msgs := []string{}
 	for _, val := range resp.Values {
+		if len(val) == 0 || val[0] == nil {
+			return errors.New("no data found")
+		}
 		msgs = append(msgs, val[0].(string))
 	}
 
