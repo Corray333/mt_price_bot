@@ -99,6 +99,7 @@ func (tg *TelegramClient) sendPrice(user *types.User, update tgbotapi.Update) {
 func (tg *TelegramClient) sendForm(user *types.User, update tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAskPhone])
 	msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+	msg.ParseMode = tgbotapi.ModeMarkdown
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 		return
