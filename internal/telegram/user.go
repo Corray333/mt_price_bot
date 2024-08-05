@@ -99,6 +99,7 @@ func (tg *TelegramClient) sendPrice(user *types.User, update tgbotapi.Update) {
 func (tg *TelegramClient) sendForm(user *types.User, update tgbotapi.Update) {
 	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAskPhone])
 	msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+	msg.DisableWebPagePreview = true
 	msg.ParseMode = tgbotapi.ModeMarkdown
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
@@ -250,6 +251,12 @@ func (tg *TelegramClient) handleInputPhoneForOrder(user *types.User, update tgbo
 			return
 		}
 	}
+	msg = tgbotapi.NewMessage(adminChat, text)
+	msg.ParseMode = tgbotapi.ModeMarkdown
+	if _, err := tg.bot.Send(msg); err != nil {
+		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
+		return
+	}
 
 	user.Phone = update.Message.Text
 	user.State = StateDone
@@ -299,6 +306,12 @@ func (tg *TelegramClient) handleInputOrgName(user *types.User, update tgbotapi.U
 				tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 				return
 			}
+		}
+		msg = tgbotapi.NewMessage(adminChat, text)
+		msg.ParseMode = tgbotapi.ModeMarkdown
+		if _, err := tg.bot.Send(msg); err != nil {
+			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
+			return
 		}
 		return
 	}
@@ -354,5 +367,11 @@ func (tg *TelegramClient) handleInputOrgNumber(user *types.User, update tgbotapi
 			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 			return
 		}
+	}
+	msg = tgbotapi.NewMessage(adminChat, text)
+	msg.ParseMode = tgbotapi.ModeMarkdown
+	if _, err := tg.bot.Send(msg); err != nil {
+		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
+		return
 	}
 }

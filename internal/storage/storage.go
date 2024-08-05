@@ -15,7 +15,6 @@ type Storage struct {
 
 const (
 	MsgWelcome = iota
-	MsgAskFIO
 	MsgAskEmail
 	MsgAskPhone
 	MsgAskOrgName
@@ -32,7 +31,6 @@ const (
 
 var Messages = map[int]string{
 	MsgWelcome:       "В этом боте вы можете запросить актуальный прайс и оставить заявку",
-	MsgAskFIO:        "Чтобы оставить заявку, отправьте свои ФИО",
 	MsgAskEmail:      "Теперь отправьте свою почту",
 	MsgAskPhone:      "Отправьте контактный номер телефона",
 	MsgAskOrgName:    "Отправьте название вашей точки (если есть)",

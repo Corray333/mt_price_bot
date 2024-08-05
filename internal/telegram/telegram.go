@@ -14,6 +14,8 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+const adminChat = -4252605559
+
 type Storage interface {
 	UpdateUser(user *types.User) error
 	CreateUser(user *types.User) error
@@ -55,6 +57,11 @@ func (tg *TelegramClient) Run() {
 	for update := range updates {
 		if update.Message == nil && update.CallbackQuery == nil {
 			continue
+		}
+		if update.Message != nil {
+			if update.Message.Chat.Type != "private" {
+				continue
+			}
 		}
 
 		if update.Message != nil {
