@@ -14,7 +14,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-const adminChat = -4252605559
+const adminChat = -1002160409101
 
 type Storage interface {
 	UpdateUser(user *types.User) error
