@@ -153,6 +153,11 @@ func (tg *TelegramClient) handleInputEmail(user *types.User, update tgbotapi.Upd
 		}
 
 		msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAskOrgName])
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(storage.Messages[storage.ButtonNoOrg], "no_org"),
+			),
+		)
 		if _, err := tg.bot.Send(msg); err != nil {
 			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 			return
