@@ -285,8 +285,20 @@ func (tg *TelegramClient) handleInputOrgName(user *types.User, update tgbotapi.U
 			return
 		}
 
-		msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAccepted])
-		if _, err := tg.bot.Send(msg); err != nil {
+		fileName, err := utils.FindFileWithKeyword("price")
+		if err != nil {
+			tg.HandleError("error while finding file: "+err.Error(), "update", update.UpdateID)
+			msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgError])
+			if _, err := tg.bot.Send(msg); err != nil {
+				tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
+				return
+			}
+			return
+		}
+		msgAccepted := tgbotapi.NewDocument(update.FromChat().ID, tgbotapi.FilePath("../files/"+fileName))
+		msgAccepted.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+		msgAccepted.Caption = storage.Messages[storage.MsgAccepted]
+		if _, err := tg.bot.Send(msgAccepted); err != nil {
 			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 			return
 		}
@@ -307,7 +319,7 @@ func (tg *TelegramClient) handleInputOrgName(user *types.User, update tgbotapi.U
 				return
 			}
 		}
-		msg = tgbotapi.NewMessage(adminChat, text)
+		msg := tgbotapi.NewMessage(adminChat, text)
 		msg.ParseMode = tgbotapi.ModeMarkdown
 		if _, err := tg.bot.Send(msg); err != nil {
 			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
@@ -346,8 +358,20 @@ func (tg *TelegramClient) handleInputOrgNumber(user *types.User, update tgbotapi
 		return
 	}
 
-	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgAccepted])
-	if _, err := tg.bot.Send(msg); err != nil {
+	fileName, err := utils.FindFileWithKeyword("price")
+	if err != nil {
+		tg.HandleError("error while finding file: "+err.Error(), "update", update.UpdateID)
+		msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgError])
+		if _, err := tg.bot.Send(msg); err != nil {
+			tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
+			return
+		}
+		return
+	}
+	msgAccepted := tgbotapi.NewDocument(update.FromChat().ID, tgbotapi.FilePath("../files/"+fileName))
+	msgAccepted.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+	msgAccepted.Caption = storage.Messages[storage.MsgAccepted]
+	if _, err := tg.bot.Send(msgAccepted); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 		return
 	}
@@ -368,7 +392,7 @@ func (tg *TelegramClient) handleInputOrgNumber(user *types.User, update tgbotapi
 			return
 		}
 	}
-	msg = tgbotapi.NewMessage(adminChat, text)
+	msg := tgbotapi.NewMessage(adminChat, text)
 	msg.ParseMode = tgbotapi.ModeMarkdown
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
