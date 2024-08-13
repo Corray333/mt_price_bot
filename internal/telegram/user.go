@@ -75,7 +75,7 @@ func (tg *TelegramClient) sendWelcomeMessage(update tgbotapi.Update) {
 }
 
 func (tg *TelegramClient) sendPrice(user *types.User, update tgbotapi.Update) {
-	fileName, err := utils.FindFileWithKeyword("price")
+	fileName, err := utils.FindFirstFile()
 	if err != nil {
 		tg.HandleError("error while finding file: "+err.Error(), "update", update.UpdateID)
 		msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgError])
@@ -290,7 +290,7 @@ func (tg *TelegramClient) handleInputOrgName(user *types.User, update tgbotapi.U
 			return
 		}
 
-		fileName, err := utils.FindFileWithKeyword("price")
+		fileName, err := utils.FindFirstFile()
 		if err != nil {
 			tg.HandleError("error while finding file: "+err.Error(), "update", update.UpdateID)
 			msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgError])
@@ -363,7 +363,7 @@ func (tg *TelegramClient) handleInputOrgNumber(user *types.User, update tgbotapi
 		return
 	}
 
-	fileName, err := utils.FindFileWithKeyword("price")
+	fileName, err := utils.FindFirstFile()
 	if err != nil {
 		tg.HandleError("error while finding file: "+err.Error(), "update", update.UpdateID)
 		msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgError])

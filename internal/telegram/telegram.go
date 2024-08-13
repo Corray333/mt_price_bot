@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/Corray333/mt_price_bot/internal/gsheets"
 	"github.com/Corray333/mt_price_bot/internal/storage"
@@ -159,7 +158,7 @@ func (tg *TelegramClient) handleAdminUpdate(update tgbotapi.Update) {
 }
 
 func (tg *TelegramClient) handleNewPrice(update tgbotapi.Update) {
-	if err := utils.RemoveFilesWithKeyword("price"); err != nil {
+	if err := utils.RemoveAllFiles(); err != nil {
 		tg.HandleError("error while removing files: "+err.Error(), "update_id", update.UpdateID)
 		return
 	}
@@ -181,8 +180,7 @@ func (tg *TelegramClient) handleNewPrice(update tgbotapi.Update) {
 	}
 	defer response.Body.Close()
 
-	extension := filepath.Ext(doc.FileName)
-	newFileName := "../files/price" + extension
+	newFileName := "../files/" + doc.FileName
 
 	out, err := os.Create(newFileName)
 	if err != nil {
