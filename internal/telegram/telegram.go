@@ -92,22 +92,11 @@ func (tg *TelegramClient) Run() {
 
 func (tg *TelegramClient) handleUserUpdate(user *types.User, update tgbotapi.Update) {
 
-	if update.Message != nil {
-		if update.Message.Text == storage.Messages[storage.ButtonPrice] {
-			tg.sendPrice(user, update)
-			if err := tg.store.UpdateUser(user); err != nil {
-				tg.HandleError("error while updating user: "+err.Error(), "update_id", update.UpdateID)
-			}
-			return
-		} else if update.Message.Text == storage.Messages[storage.ButtonForm] {
-			tg.sendForm(user, update)
-			return
-		}
-	}
-
 	switch user.State {
 	case StateWaitingFIO:
 		tg.handleInputFIO(user, update)
+	case StateWaitingOption:
+		tg.handleInputOption(user, update)
 	case StateWaitingPhoneForOrder:
 		tg.handleInputPhoneForOrder(user, update)
 	case StateWaitingEmail:

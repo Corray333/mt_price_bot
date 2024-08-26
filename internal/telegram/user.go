@@ -16,6 +16,7 @@ import (
 
 const (
 	StateWaitingFIO = iota + 1
+	StateWaitingOption
 	StateWaitingEmail
 	StateWaitingPhone
 	StateWaitingOrgName
@@ -114,7 +115,7 @@ func (tg *TelegramClient) sendForm(user *types.User, update tgbotapi.Update) {
 
 func (tg *TelegramClient) handleInputFIO(user *types.User, update tgbotapi.Update) {
 	user.FIO = update.Message.Text
-	user.State = StateWaitingEmail
+	user.State = StateWaitingOption
 
 	msg := tgbotapi.NewMessage(update.FromChat().ID, storage.Messages[storage.MsgChooseQueryType])
 	msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
@@ -126,6 +127,25 @@ func (tg *TelegramClient) handleInputFIO(user *types.User, update tgbotapi.Updat
 	if _, err := tg.bot.Send(msg); err != nil {
 		tg.HandleError("error while sending message: "+err.Error(), "update", update.UpdateID)
 		return
+	}
+
+}
+
+func (tg *TelegramClient) handleInputOption(user *types.User, update tgbotapi.Update) {
+
+	if update.Message != nil {
+		if update.Message.Text == storage.Messages[storage.ButtonPrice] {
+			tg.sendPrice(user, update)
+			if err := tg.store.UpdateUser(user); err != nil {
+				tg.HandleError("error while updating user: "+err.Error(), "update_id", update.UpdateID)
+			}
+			user.State = StateWaitingPhoneForOrder
+			return
+		} else if update.Message.Text == storage.Messages[storage.ButtonForm] {
+			tg.sendForm(user, update)
+			user.State = StateWaitingPhone
+			return
+		}
 	}
 
 }
